@@ -11,6 +11,25 @@ npm install
 npm run dev
 ```
 
+## 배포
+
+Vercel에서 GitHub 저장소를 연결하고 production branch를 `main`으로 둡니다.
+
+이 프로젝트는 `main` push 후 최신 production 배포를 `network-manager-cbt.vercel.app`으로 동기화하는 GitHub Actions 워크플로를 포함합니다.
+
+필요한 GitHub Secrets:
+
+- `VERCEL_TOKEN`
+- `VERCEL_PROJECT_ID`
+- `VERCEL_TEAM_ID` 팀 프로젝트일 때만 사용
+
+필요한 Vercel 환경변수:
+
+- `NEXT_PUBLIC_SITE_URL=https://network-manager-cbt.vercel.app`
+- `NEXT_PUBLIC_KAKAO_JAVASCRIPT_KEY` 카카오톡 공유를 사용할 때 설정
+
+카카오톡 공유를 사용하려면 Kakao Developers에서 JavaScript 키를 발급하고 Web domain에 `https://network-manager-cbt.vercel.app`을 등록합니다.
+
 ## 테스트 명령어
 
 ### `npm run test`
@@ -53,7 +72,9 @@ npm run test:e2e
 - 과목 선택: 전체, 네트워크 일반, TCP/IP, NOS, 네트워크 운용기기
 - 문항 수 선택: 20, 30, 50문항
 - 기본 CBT 기준: 50문항, 50분, 60점 이상 합격
-- 결과 화면: 점수, 정답 수, 합격 여부, 틀린 문항의 정답과 짧은 해설
+- 결과 화면: 점수, 정답 수, 합격 여부, 전체 문항의 정답과 상세 해설
+- 결과 공유: 카카오톡 공유, Web Share, 링크 복사 fallback
+- 공유 페이지: `/share` 링크로 CBT 결과 요약 확인
 
 ## 문제 데이터 수정
 

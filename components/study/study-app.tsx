@@ -11,6 +11,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { ShareActions } from "@/components/share/share-actions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { SelectInput } from "@/components/ui/field";
@@ -26,6 +27,7 @@ import {
 import { questionBank } from "@/lib/question-bank";
 import { selectCbtQuestions } from "@/lib/quiz";
 import { gradeCbt } from "@/lib/scoring";
+import { createShareResultPayload } from "@/lib/share";
 import type { Question, QuestionCountOption, SubjectFilter } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -156,7 +158,7 @@ export function StudyApp() {
               네트워크관리사 2급 CBT 연습
             </h1>
             <p className="mt-2 max-w-2xl text-sm text-slate-600">
-              공식 기출 원문을 복제하지 않은 자체 제작 유사문제 200문항으로 빠르게 풉니다. (저작권 문제)
+              공식 기출 원문을 복제하지 않은 자체 AI 제작 유사문제 200문항으로 빠르게 풉니다.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -196,6 +198,7 @@ export function StudyApp() {
             onRestart={startCbt}
             onSetup={resetToSetup}
             result={result}
+            subject={subject}
           />
         )}
       </div>
@@ -428,11 +431,15 @@ function ResultView({
   onRestart,
   onSetup,
   result,
+  subject,
 }: {
   onRestart: () => void;
   onSetup: () => void;
   result: ReturnType<typeof gradeCbt>;
+  subject: SubjectFilter;
 }) {
+  const sharePayload = createShareResultPayload(result, subject);
+
   return (
     <section className="space-y-5">
       <div className="rounded-md border border-slate-200 bg-white p-5 shadow-sm">
@@ -467,6 +474,7 @@ function ResultView({
             설정으로
           </Button>
         </div>
+        <ShareActions className="mt-4" payload={sharePayload} />
       </div>
 
       <div className="rounded-md border border-slate-200 bg-white p-5 shadow-sm">

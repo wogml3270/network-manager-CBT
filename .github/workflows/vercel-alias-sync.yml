@@ -1,0 +1,27 @@
+name: Sync Vercel Alias
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  sync-alias:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Sync network-manager-cbt alias to latest production deployment
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+          VERCEL_TEAM_ID: ${{ secrets.VERCEL_TEAM_ID }}
+          VERCEL_ALIAS_DOMAIN: network-manager-cbt.vercel.app
+          GITHUB_SHA: ${{ github.sha }}
+        run: node scripts/vercel-sync-production-alias.mjs
