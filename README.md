@@ -28,6 +28,8 @@ Vercel에서 GitHub 저장소를 연결하고 production branch를 `main`으로 
 - `NEXT_PUBLIC_SITE_URL=https://network-manager-cbt.vercel.app`
 - `NEXT_PUBLIC_KAKAO_JAVASCRIPT_KEY` 카카오톡 공유를 사용할 때 설정
 
+환경변수 예시는 `.env.example`에서 확인할 수 있습니다.
+
 카카오톡 공유를 사용하려면 Kakao Developers에서 JavaScript 키를 발급하고 Web domain에 `https://network-manager-cbt.vercel.app`을 등록합니다.
 
 ## 테스트 명령어
