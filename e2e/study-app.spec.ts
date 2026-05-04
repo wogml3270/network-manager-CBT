@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 test("runs a simple CBT flow", async ({ page }, testInfo) => {
   await page.goto("/");
   await expect(
-    page.getByRole("heading", { name: "네트워크관리사 2급 CBT 연습" }),
+    page.getByRole("heading", { name: "네트워크관리사 2급 CBT" }),
   ).toBeVisible();
   await expect(page.getByText("내장 200문항")).toBeVisible();
   await page.screenshot({

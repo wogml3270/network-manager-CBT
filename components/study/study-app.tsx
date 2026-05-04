@@ -155,7 +155,7 @@ export function StudyApp() {
           <div>
             <p className="text-xs font-bold uppercase text-teal-700">Network Manager CBT</p>
             <h1 className="mt-1 text-2xl font-bold text-slate-950">
-              네트워크관리사 2급 CBT 연습
+              네트워크관리사 2급 CBT
             </h1>
             <p className="mt-2 max-w-2xl text-sm text-slate-600">
               공식 기출 원문을 복제하지 않은 자체 AI 제작 유사문제 200문항으로 빠르게 풉니다.
