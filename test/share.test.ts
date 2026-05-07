@@ -3,6 +3,8 @@ import {
   buildShareMessage,
   buildShareUrl,
   createShareResultPayload,
+  decodeShareResultToken,
+  encodeShareResultPayload,
   parseShareResultSearchParams,
 } from "@/lib/share";
 import type { CbtResult } from "@/lib/types";
@@ -33,45 +35,41 @@ describe("share helpers", () => {
     const payload = createShareResultPayload(cbtResult, "tcp-ip");
     const shareUrl = buildShareUrl(payload, "https://example.com/");
     const parsed = parseShareResultSearchParams(new URL(shareUrl).searchParams);
+    const resultToken = new URL(shareUrl).searchParams.get("r");
 
-    expect(shareUrl).toBe(
-      "https://example.com/share?score=64&correct=32&total=50&passed=1&subject=tcp-ip",
-    );
+    expect(shareUrl).toMatch(/^https:\/\/example\.com\/share\?r=[0-9A-Za-z.]+$/);
+    expect(resultToken).not.toContain("score");
     expect(parsed).toEqual(payload);
   });
 
-  it("parses Next searchParams objects and derives missing pass state", () => {
-    const parsed = parseShareResultSearchParams({
-      score: "58",
-      correct: "29",
-      total: "50",
-      subject: "all",
-    });
+  it("encodes and decodes share results with Base62", () => {
+    const payload = createShareResultPayload(cbtResult, "tcp-ip");
+    const token = encodeShareResultPayload(payload);
+    const parsed = decodeShareResultToken(token);
 
-    expect(parsed).toMatchObject({
-      score: 58,
-      correctCount: 29,
-      totalCount: 50,
-      passed: false,
-      subject: "all",
-    });
+    expect(token).toMatch(/^[0-9A-Za-z.]+$/);
+    expect(parsed).toEqual(payload);
   });
 
-  it("rejects invalid share result parameters", () => {
+  it("rejects tampered Base62 share result tokens", () => {
+    const token = encodeShareResultPayload(createShareResultPayload(cbtResult, "tcp-ip"));
+    const tampered = token.replace(/^[^.]+/, "65");
+
+    expect(decodeShareResultToken(tampered)).toBeNull();
+  });
+
+  it("rejects legacy plain query parameters and invalid tokens", () => {
     expect(
       parseShareResultSearchParams({
-        score: "70",
-        correct: "60",
+        score: "60",
+        correct: "30",
         total: "50",
         subject: "all",
       }),
     ).toBeNull();
     expect(
       parseShareResultSearchParams({
-        score: "70",
-        correct: "35",
-        total: "50",
-        subject: "unknown",
+        r: "not-a-valid-token",
       }),
     ).toBeNull();
   });

@@ -31,7 +31,7 @@ test("runs a simple CBT flow", async ({ page }, testInfo) => {
 });
 
 test("renders a shared CBT result page", async ({ page }) => {
-  await page.goto("/share?score=60&correct=30&total=50&passed=1&subject=all");
+  await page.goto("/share?r=y.U.o.1.0.gN");
 
   await expect(
     page.getByRole("heading", { name: "네트워크관리사 2급 CBT 결과" }),

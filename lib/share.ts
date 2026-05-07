@@ -1,7 +1,18 @@
-import { PASSING_SCORE, SUBJECT_LABELS, SUBJECT_ORDER } from "@/lib/constants";
+import { SUBJECT_LABELS } from "@/lib/constants";
 import type { CbtResult, SubjectFilter } from "@/lib/types";
 
 export const DEFAULT_SITE_URL = "https://network-manager-cbt.vercel.app";
+const BASE62_ALPHABET = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+const SUBJECT_CODES: Record<SubjectFilter, number> = {
+  all: 0,
+  "network-general": 1,
+  "tcp-ip": 2,
+  nos: 3,
+  "network-operation": 4,
+};
+const SUBJECT_BY_CODE = Object.fromEntries(
+  Object.entries(SUBJECT_CODES).map(([subject, code]) => [code, subject]),
+) as Record<number, SubjectFilter>;
 
 export interface ShareResultPayload {
   score: number;
@@ -19,6 +30,62 @@ export interface ShareMessage {
 }
 
 type ShareSearchParams = URLSearchParams | Record<string, string | string[] | undefined>;
+
+// 공유 payload 숫자 배열을 Base62 문자열로 인코딩합니다.
+function encodeBase62(values: number[]) {
+  return values
+    .map((value) => {
+      if (!Number.isInteger(value) || value < 0) {
+        throw new Error("Base62 can encode only non-negative integers.");
+      }
+
+      if (value === 0) {
+        return BASE62_ALPHABET[0];
+      }
+
+      let rest = value;
+      let encoded = "";
+
+      while (rest > 0) {
+        encoded = BASE62_ALPHABET[rest % BASE62_ALPHABET.length] + encoded;
+        rest = Math.floor(rest / BASE62_ALPHABET.length);
+      }
+
+      return encoded;
+    })
+    .join(".");
+}
+
+// Base62 공유 토큰을 숫자 배열로 디코딩합니다.
+function decodeBase62(token: string) {
+  if (!token || !/^[0-9A-Za-z.]+$/.test(token)) {
+    return null;
+  }
+
+  return token.split(".").map((chunk) => {
+    let value = 0;
+
+    for (const character of chunk) {
+      const index = BASE62_ALPHABET.indexOf(character);
+
+      if (index < 0) {
+        return Number.NaN;
+      }
+
+      value = value * BASE62_ALPHABET.length + index;
+    }
+
+    return value;
+  });
+}
+
+// 공유 토큰의 단순 조작을 걸러내기 위한 체크섬을 계산합니다.
+function calculateShareChecksum(values: number[]) {
+  return values.reduce(
+    (checksum, value, index) => (checksum + value * (index + 17)) % 3844,
+    97,
+  );
+}
 
 // URL 끝의 슬래시를 제거해 공유 링크를 안정적으로 이어 붙입니다.
 function trimTrailingSlash(url: string) {
@@ -58,11 +125,7 @@ export function createShareResultPayload(
 export function buildShareUrl(payload: ShareResultPayload, baseUrl = resolveSiteUrl()) {
   const url = new URL("/share", baseUrl);
 
-  url.searchParams.set("score", String(payload.score));
-  url.searchParams.set("correct", String(payload.correctCount));
-  url.searchParams.set("total", String(payload.totalCount));
-  url.searchParams.set("passed", payload.passed ? "1" : "0");
-  url.searchParams.set("subject", payload.subject);
+  url.searchParams.set("r", encodeShareResultPayload(payload));
 
   return url.toString();
 }
@@ -102,51 +165,38 @@ function getSearchParam(params: ShareSearchParams, key: string) {
   return value ?? null;
 }
 
-// 숫자 query 값을 정수로 파싱하고 유효하지 않으면 null을 반환합니다.
-function parseIntegerParam(value: string | null) {
-  if (!value || !/^\d+$/.test(value)) {
+// 공유 결과 payload를 Base62 토큰으로 변환합니다.
+export function encodeShareResultPayload(payload: ShareResultPayload) {
+  const values = [
+    payload.score,
+    payload.correctCount,
+    payload.totalCount,
+    payload.passed ? 1 : 0,
+    SUBJECT_CODES[payload.subject],
+  ];
+
+  return encodeBase62([...values, calculateShareChecksum(values)]);
+}
+
+// Base62 토큰을 공유 결과 payload로 복원합니다.
+export function decodeShareResultToken(token: string): ShareResultPayload | null {
+  const values = decodeBase62(token);
+
+  if (!values || values.length !== 6 || values.some((value) => !Number.isInteger(value))) {
     return null;
   }
 
-  return Number(value);
-}
-
-// 합격 여부 query 값을 boolean으로 파싱합니다.
-function parseBooleanParam(value: string | null) {
-  if (value === "1" || value === "true") {
-    return true;
-  }
-
-  if (value === "0" || value === "false") {
-    return false;
-  }
-
-  return null;
-}
-
-// query의 과목 값이 앱에서 지원하는 필터인지 확인합니다.
-function isSubjectFilter(value: string | null): value is SubjectFilter {
-  return value === "all" || SUBJECT_ORDER.includes(value as never);
-}
-
-// 공유 페이지 query 문자열을 안전하게 읽어 결과 payload로 복원합니다.
-export function parseShareResultSearchParams(
-  params: ShareSearchParams,
-): ShareResultPayload | null {
-  const score = parseIntegerParam(getSearchParam(params, "score"));
-  const correctCount = parseIntegerParam(getSearchParam(params, "correct"));
-  const totalCount = parseIntegerParam(getSearchParam(params, "total"));
-  const passed = parseBooleanParam(getSearchParam(params, "passed"));
-  const subject = getSearchParam(params, "subject");
+  const [score, correctCount, totalCount, passedCode, subjectCode, checksum] = values;
+  const expectedChecksum = calculateShareChecksum(values.slice(0, 5));
+  const subject = SUBJECT_BY_CODE[subjectCode];
 
   if (
-    score === null ||
-    correctCount === null ||
-    totalCount === null ||
+    checksum !== expectedChecksum ||
     score > 100 ||
     correctCount > totalCount ||
     totalCount <= 0 ||
-    !isSubjectFilter(subject)
+    (passedCode !== 0 && passedCode !== 1) ||
+    !subject
   ) {
     return null;
   }
@@ -155,7 +205,20 @@ export function parseShareResultSearchParams(
     score,
     correctCount,
     totalCount,
-    passed: passed ?? score >= PASSING_SCORE,
+    passed: Boolean(passedCode),
     subject,
   };
+}
+
+// 공유 페이지 query 문자열을 안전하게 읽어 결과 payload로 복원합니다.
+export function parseShareResultSearchParams(
+  params: ShareSearchParams,
+): ShareResultPayload | null {
+  const encodedResult = getSearchParam(params, "r");
+
+  if (!encodedResult) {
+    return null;
+  }
+
+  return decodeShareResultToken(encodedResult);
 }
